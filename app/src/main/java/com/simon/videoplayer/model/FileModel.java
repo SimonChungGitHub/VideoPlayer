@@ -8,7 +8,6 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.provider.MediaStore;
-import android.util.Log;
 
 import com.simon.videoplayer.sqlite.VideoSqliteOpenHelper;
 
@@ -101,8 +100,6 @@ public class FileModel implements Parcelable {
                 } else {
                     position = 0;
                 }
-            } catch (Exception e) {
-                Log.e("aaa", e.toString());
             }
         }
         return position;

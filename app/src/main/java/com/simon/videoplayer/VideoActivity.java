@@ -44,7 +44,7 @@ public class VideoActivity extends AppCompatActivity {
 
     private GridView gridView;
     private ArrayList<FileModel> fileModels = new ArrayList<>();
-    private ImageAdapter imageAdapter;
+    private viewAdapter imageAdapter;
     private SearchView searchView;
 
     @Override
@@ -53,8 +53,8 @@ public class VideoActivity extends AppCompatActivity {
         setContentView(R.layout.activity_video);
         gridView = findViewById(R.id.gridView);
         gridView.setNumColumns(3);
-        fileModels = loadVideoThumbnailList();
-        imageAdapter = new ImageAdapter(this, fileModels);
+        fileModels = loadVideoList();
+        imageAdapter = new viewAdapter(this, fileModels);
         gridView.setAdapter(imageAdapter);
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
@@ -78,45 +78,49 @@ public class VideoActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        fileModels = loadVideoThumbnailList();
+        fileModels = loadVideoList();
         imageAdapter.notifyDataSetChanged();
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu, menu);
-        SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
-        searchView = (SearchView) menu.findItem(R.id.search).getActionView();
-        // Assumes current activity is the searchable activity (不然會 crash)
-        searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
-        searchView.setIconified(false);
-        searchView.clearFocus();
-        searchView.setQueryHint("請輸入查詢的影片名稱");
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                if (query.equals("")) {
-                    imageAdapter = new ImageAdapter(getApplicationContext(), fileModels);
-                } else {
-                    ArrayList<FileModel> list = (ArrayList<FileModel>) fileModels.stream().filter(o -> o.getPath().toLowerCase().contains(query)).collect(Collectors.toList());
-                    imageAdapter = new ImageAdapter(getApplicationContext(), list);
+        try {
+            getMenuInflater().inflate(R.menu.menu, menu);
+            SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+            searchView = (SearchView) menu.findItem(R.id.search).getActionView();
+            // Assumes current activity is the searchable activity (不然會 crash)
+            searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
+            searchView.setIconified(false);
+            searchView.clearFocus();
+            searchView.setQueryHint("請輸入查詢的影片名稱");
+            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    if (query.equals("")) {
+                        imageAdapter = new viewAdapter(getApplicationContext(), fileModels);
+                    } else {
+                        ArrayList<FileModel> list = (ArrayList<FileModel>) fileModels.stream().filter(o -> o.getPath().toLowerCase().contains(query)).collect(Collectors.toList());
+                        imageAdapter = new viewAdapter(getApplicationContext(), list);
+                    }
+                    gridView.setAdapter(imageAdapter);
+                    return false;
                 }
-                gridView.setAdapter(imageAdapter);
-                return false;
-            }
 
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                if (newText.equals("")) {
-                    imageAdapter = new ImageAdapter(getApplicationContext(), fileModels);
-                } else {
-                    ArrayList<FileModel> list = (ArrayList<FileModel>) fileModels.stream().filter(o -> o.getPath().toLowerCase().contains(newText)).collect(Collectors.toList());
-                    imageAdapter = new ImageAdapter(getApplicationContext(), list);
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    if (newText.equals("")) {
+                        imageAdapter = new viewAdapter(getApplicationContext(), fileModels);
+                    } else {
+                        ArrayList<FileModel> list = (ArrayList<FileModel>) fileModels.stream().filter(o -> o.getPath().toLowerCase().contains(newText)).collect(Collectors.toList());
+                        imageAdapter = new viewAdapter(getApplicationContext(), list);
+                    }
+                    gridView.setAdapter(imageAdapter);
+                    return false;
                 }
-                gridView.setAdapter(imageAdapter);
-                return false;
-            }
-        });
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -133,8 +137,8 @@ public class VideoActivity extends AppCompatActivity {
                         }
                         gridView = findViewById(R.id.gridView);
                         gridView.setNumColumns(3);
-                        fileModels = loadVideoThumbnailList();
-                        imageAdapter = new ImageAdapter(this, fileModels);
+                        fileModels = loadVideoList();
+                        imageAdapter = new viewAdapter(this, fileModels);
                         gridView.setAdapter(imageAdapter);
                     }
                 } else {
@@ -168,32 +172,36 @@ public class VideoActivity extends AppCompatActivity {
         }
     }
 
-    public ArrayList<FileModel> loadVideoThumbnailList() {
+    public ArrayList<FileModel> loadVideoList() {
         ArrayList<FileModel> list = new ArrayList<>();
-        Uri collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            collection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
+        try {
+            Uri collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                collection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
+            }
+            try (Cursor cursor = getContentResolver().query(collection,
+                    new String[]{MediaStore.Video.Media._ID, MediaStore.Video.Media.DATA,
+                            MediaStore.Video.Media.DATE_ADDED, MediaStore.Video.Media.DURATION},
+                    null, null, MediaStore.Video.Media.DATE_ADDED + " ASC")) {
+                while (cursor.moveToNext()) {
+                    FileModel model = new FileModel(this);
+                    model.setId(cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)));
+                    model.setPath(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)));
+                    model.setDuration(Integer.parseInt(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION))));
+                    list.add(model);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        Cursor cursor = getContentResolver().query(collection,
-                new String[]{MediaStore.Video.Media._ID, MediaStore.Video.Media.DATA,
-                        MediaStore.Video.Media.DATE_ADDED, MediaStore.Video.Media.DURATION},
-                null, null, MediaStore.Video.Media.DATE_ADDED + " ASC");
-        while (cursor.moveToNext()) {
-            FileModel model = new FileModel(this);
-            model.setId(cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)));
-            model.setPath(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)));
-            model.setDuration(Integer.parseInt(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION))));
-            list.add(model);
-        }
-        cursor.close();
         return list;
     }
 
-    private static class ImageAdapter extends BaseAdapter {
+    private static class viewAdapter extends BaseAdapter {
         private final Context context;
         private final ArrayList<FileModel> models;
 
-        public ImageAdapter(Context context, ArrayList<FileModel> models) {
+        public viewAdapter(Context context, ArrayList<FileModel> models) {
             this.context = context;
             this.models = models;
         }
@@ -215,68 +223,71 @@ public class VideoActivity extends AppCompatActivity {
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            if (convertView == null) {
-                convertView = LayoutInflater.from(context).inflate(R.layout.grid_item, parent, false);
-            }
-            FileModel model = models.get(position);
-            TextView title = convertView.findViewById(R.id.video_title);
-            String name = Paths.get(model.getPath()).toFile().getName();
-            title.setText(name.substring(0, name.indexOf(".")));
-            ImageView imageView = convertView.findViewById(R.id.imageView);
-            ProgressBar progressBar = convertView.findViewById(R.id.progressBar);
-            progressBar.setMax(model.getDuration());
-            int currentPosition = model.getPosition();
-            if (currentPosition == 0) {
-                progressBar.setVisibility(View.GONE);
-            } else if (currentPosition >= model.getDuration()) {
-                model.setPosition(0);
-                progressBar.setVisibility(View.GONE);
-            } else {
-                progressBar.setProgress(model.getPosition());
-                progressBar.setVisibility(View.VISIBLE);
-            }
+            try {
+                if (convertView == null) {
+                    convertView = LayoutInflater.from(context).inflate(R.layout.grid_item, parent, false);
+                }
+                FileModel model = models.get(position);
+                TextView title = convertView.findViewById(R.id.video_title);
+                String name = Paths.get(model.getPath()).toFile().getName();
+                title.setText(name.substring(0, name.indexOf(".")));
+                ImageView imageView = convertView.findViewById(R.id.imageView);
+                ProgressBar progressBar = convertView.findViewById(R.id.progressBar);
+                progressBar.setMax(model.getDuration());
+                int currentPosition = model.getPosition();
+                if (currentPosition == 0) {
+                    progressBar.setVisibility(View.GONE);
+                } else if (currentPosition >= model.getDuration()) {
+                    model.setPosition(0);
+                    progressBar.setVisibility(View.GONE);
+                } else {
+                    progressBar.setProgress(model.getPosition());
+                    progressBar.setVisibility(View.VISIBLE);
+                }
 
-            imageView.setScaleType(ImageView.ScaleType.FIT_XY);
-            CreateThumbnail createBitmap = new CreateThumbnail(context, model);
-            Bitmap bitmap = createBitmap.roundedCornerBitmap(createBitmap.getVideoThumbnailBitmap(), 10);
-            if (bitmap != null) {
+                imageView.setScaleType(ImageView.ScaleType.FIT_XY);
+                CreateThumbnail createBitmap = new CreateThumbnail(context, model);
+                Bitmap bitmap = createBitmap.roundedCornerBitmap(createBitmap.getVideoThumbnailBitmap(), 10);
+                if (bitmap != null) {
 
-                imageView.setImageBitmap(bitmap);
-            }
-            imageView.setOnClickListener(view -> {
-                Intent intent = new Intent(context, VideoPlayActivity.class);
-                intent.putExtra("model", model);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(intent);
-            });
-            imageView.setOnLongClickListener(v -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-                        !Environment.isExternalStorageManager()) {
+                    imageView.setImageBitmap(bitmap);
+                }
+                imageView.setOnClickListener(view -> {
+                    Intent intent = new Intent(context, VideoPlayActivity.class);
+                    intent.putExtra("model", model);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(intent);
+                });
+                imageView.setOnLongClickListener(v -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                            !Environment.isExternalStorageManager()) {
+                        new AlertDialog.Builder(context)
+                                .setMessage("無刪除檔案權限, 是否開啟權限")
+                                .setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
+                                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                                    Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    context.startActivity(intent);
+                                })
+                                .show();
+                        return false;
+                    }
+                    File file = new File(model.getPath());
                     new AlertDialog.Builder(context)
-                            .setMessage("無刪除檔案權限, 是否開啟權限")
-                            .setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
-                            .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                                Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                context.startActivity(intent);
+                            .setMessage("刪除檔案 " + file.getName())
+                            .setNegativeButton(android.R.string.no, (dialog, which) -> dialog.dismiss())
+                            .setPositiveButton(android.R.string.yes, (dialog, which) -> {
+                                model.deleteVideo(context, model.getId());
+                                dialog.dismiss();
+                                models.remove(model);
+                                notifyDataSetChanged();
                             })
                             .show();
                     return false;
-                }
-                File file = new File(model.getPath());
-                new AlertDialog.Builder(context)
-                        .setMessage("刪除檔案 " + file.getName())
-                        .setNegativeButton(android.R.string.no, (dialog, which) -> dialog.dismiss())
-                        .setPositiveButton(android.R.string.yes, (dialog, which) -> {
-                            model.deleteVideo(context, model.getId());
-                            dialog.dismiss();
-                            models.remove(model);
-                            notifyDataSetChanged();
-                        })
-                        .show();
-                return false;
-            });
-
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             return convertView;
         }
     }

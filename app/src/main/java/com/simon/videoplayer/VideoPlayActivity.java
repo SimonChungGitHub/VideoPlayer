@@ -41,14 +41,18 @@ public class VideoPlayActivity extends AppCompatActivity {
     public final BroadcastReceiver headsetPlugReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.hasExtra("state")) {
-                if (intent.getIntExtra("state", 0) == 0) {
-                    //耳機拔除
-                    videoView.pause();
-                } else if (intent.getIntExtra("state", 0) == 1) {
-                    //耳機插入
-                    videoView.start();
+            try {
+                if (intent.hasExtra("state")) {
+                    if (intent.getIntExtra("state", 0) == 0) {
+                        //耳機拔除
+                        videoView.pause();
+                    } else if (intent.getIntExtra("state", 0) == 1) {
+                        //耳機插入
+                        videoView.start();
+                    }
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     };
@@ -59,20 +63,24 @@ public class VideoPlayActivity extends AppCompatActivity {
     public final BroadcastReceiver bluetoothReceive = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            int bluetoothState = intent.getIntExtra(BluetoothAdapter.EXTRA_CONNECTION_STATE, 0);
-            if (action.equals(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
-                    && bluetoothState == BluetoothAdapter.STATE_DISCONNECTED) {
-                //藍芽斷開
-                audioManager.abandonAudioFocusRequest(focusRequest);
-                videoView.pause();
-                mediaController.show(0);
-            } else if (action.equals(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
-                    && bluetoothState == BluetoothAdapter.STATE_CONNECTED) {
-                //藍芽連線
-                audioManager.requestAudioFocus(focusRequest);
-                videoView.start();
-                mediaController.hide();
+            try {
+                String action = intent.getAction();
+                int bluetoothState = intent.getIntExtra(BluetoothAdapter.EXTRA_CONNECTION_STATE, 0);
+                if (action.equals(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
+                        && bluetoothState == BluetoothAdapter.STATE_DISCONNECTED) {
+                    //藍芽斷開
+                    audioManager.abandonAudioFocusRequest(focusRequest);
+                    videoView.pause();
+                    mediaController.show(0);
+                } else if (action.equals(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
+                        && bluetoothState == BluetoothAdapter.STATE_CONNECTED) {
+                    //藍芽連線
+                    audioManager.requestAudioFocus(focusRequest);
+                    videoView.start();
+                    mediaController.hide();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     };
@@ -88,7 +96,6 @@ public class VideoPlayActivity extends AppCompatActivity {
     @SuppressLint("SourceLockedOrientationActivity")
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-
         switch (ev.getAction() & MotionEvent.ACTION_MASK) {
             case MotionEvent.ACTION_DOWN:
                 startPoint.set((int) ev.getX(), (int) ev.getY());
@@ -123,85 +130,89 @@ public class VideoPlayActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().addFlags(View.SYSTEM_UI_FLAG_FULLSCREEN);
-        Objects.requireNonNull(getSupportActionBar()).hide();
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        setContentView(R.layout.activity_video_play);
-        videoView = findViewById(R.id.videoView2);
-        fileTitle = findViewById(R.id.video_view_title);
-        registerReceiver(headsetPlugReceiver, new IntentFilter("android.intent.action.HEADSET_PLUG"));
-        registerReceiver(bluetoothReceive, new IntentFilter(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED));
-        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        AudioAttributes playbackAttributes = new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_GAME)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build();
-        focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(playbackAttributes)
-                .setAcceptsDelayedFocusGain(true)
-                .setOnAudioFocusChangeListener(i -> {
-                    switch (i) {
-                        case AudioManager.AUDIOFOCUS_LOSS:
-                        case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                            videoView.pause();
-                            break;
-                        case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                            break;
-                        case AudioManager.AUDIOFOCUS_GAIN:
-                            videoView.start();
-                            break;
-                    }
-                })
-                .build();
-        audioManager.requestAudioFocus(focusRequest);
+        try {
+            getWindow().addFlags(View.SYSTEM_UI_FLAG_FULLSCREEN);
+            Objects.requireNonNull(getSupportActionBar()).hide();
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            setContentView(R.layout.activity_video_play);
+            videoView = findViewById(R.id.videoView2);
+            fileTitle = findViewById(R.id.video_view_title);
+            registerReceiver(headsetPlugReceiver, new IntentFilter("android.intent.action.HEADSET_PLUG"));
+            registerReceiver(bluetoothReceive, new IntentFilter(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED));
+            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            AudioAttributes playbackAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build();
+            focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(playbackAttributes)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener(i -> {
+                        switch (i) {
+                            case AudioManager.AUDIOFOCUS_LOSS:
+                            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                                videoView.pause();
+                                break;
+                            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                                break;
+                            case AudioManager.AUDIOFOCUS_GAIN:
+                                videoView.start();
+                                break;
+                        }
+                    })
+                    .build();
+            audioManager.requestAudioFocus(focusRequest);
 
-        model = getIntent().getParcelableExtra("model");
-        model.setContext(this);
-        videoView.setVideoPath(model.getPath());
-        String name = Paths.get(model.getPath()).toFile().getName();
-        fileTitle.setText(name.substring(0, name.indexOf(".")));
-        mediaController = new MediaController(this) {
-            @Override
-            public void show(int timeout) {
-                if (timeout == 3000) timeout = 0;
-                super.show(timeout);
-                fileTitle.setVisibility(View.VISIBLE);
-            }
-
-            @Override
-            public void hide() {
-                super.hide();
-                fileTitle.setVisibility(View.GONE);
-            }
-
-            @Override
-            public boolean dispatchKeyEvent(KeyEvent event) {
-                if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-                    super.hide();
-                    finish();
-                    return true;
+            model = getIntent().getParcelableExtra("model");
+            model.setContext(this);
+            videoView.setVideoPath(model.getPath());
+            String name = Paths.get(model.getPath()).toFile().getName();
+            fileTitle.setText(name.substring(0, name.indexOf(".")));
+            mediaController = new MediaController(this) {
+                @Override
+                public void show(int timeout) {
+                    if (timeout == 3000) timeout = 0;
+                    super.show(timeout);
+                    fileTitle.setVisibility(View.VISIBLE);
                 }
-                return super.dispatchKeyEvent(event);
-            }
-        };
-        mediaController.setAnchorView(videoView);
-        videoView.setOnPreparedListener(mp -> {
-            videoView.setMediaController(mediaController);
-            videoView.requestFocus();
-            videoView.seekTo(model.getPosition());
-            videoView.start();
-        });
-        videoView.setOnCompletionListener(mp -> {
-            backupCurrentPosition(model, videoView.getCurrentPosition());
-            try (VideoSqliteOpenHelper obj = new VideoSqliteOpenHelper(this)) {
-                SQLiteDatabase db = obj.getWritableDatabase();
-                db.delete(VideoSqliteOpenHelper._TableName, "video_id=?", new String[]{String.valueOf(model.getId())});
-            } catch (Exception e) {
-                Log.e("setOnCompletionListener", e.toString());
-            }
-            mp.seekTo(0);
-            finish();
-        });
+
+                @Override
+                public void hide() {
+                    super.hide();
+                    fileTitle.setVisibility(View.GONE);
+                }
+
+                @Override
+                public boolean dispatchKeyEvent(KeyEvent event) {
+                    if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+                        super.hide();
+                        finish();
+                        return true;
+                    }
+                    return super.dispatchKeyEvent(event);
+                }
+            };
+            mediaController.setAnchorView(videoView);
+            videoView.setOnPreparedListener(mp -> {
+                videoView.setMediaController(mediaController);
+                videoView.requestFocus();
+                videoView.seekTo(model.getPosition());
+                videoView.start();
+            });
+            videoView.setOnCompletionListener(mp -> {
+                backupCurrentPosition(model, videoView.getCurrentPosition());
+                try (VideoSqliteOpenHelper obj = new VideoSqliteOpenHelper(this)) {
+                    SQLiteDatabase db = obj.getWritableDatabase();
+                    db.delete(VideoSqliteOpenHelper._TableName, "video_id=?", new String[]{String.valueOf(model.getId())});
+                } catch (Exception e) {
+                    Log.e("setOnCompletionListener", e.toString());
+                }
+                mp.seekTo(0);
+                finish();
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -237,11 +248,10 @@ public class VideoPlayActivity extends AppCompatActivity {
                 values.put("video_id", model.getId());
                 values.put("position", currentPosition);
                 db.insert(VideoSqliteOpenHelper._TableName, null, values);
-            } catch (Exception e) {
-                Log.e("backupCurrentPosition", e.toString());
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
-
 
 }
