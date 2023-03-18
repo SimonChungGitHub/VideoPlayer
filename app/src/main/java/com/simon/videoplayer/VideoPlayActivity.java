@@ -17,6 +17,7 @@ import android.media.AudioManager;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -172,10 +173,20 @@ public class VideoPlayActivity extends AppCompatActivity {
                 super.hide();
                 fileTitle.setVisibility(View.GONE);
             }
+
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent event) {
+                if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+                    super.hide();
+                    finish();
+                    return true;
+                }
+                return super.dispatchKeyEvent(event);
+            }
         };
         mediaController.setAnchorView(videoView);
-        videoView.setMediaController(mediaController);
         videoView.setOnPreparedListener(mp -> {
+            videoView.setMediaController(mediaController);
             videoView.requestFocus();
             videoView.seekTo(model.getPosition());
             videoView.start();
