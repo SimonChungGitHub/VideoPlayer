@@ -3,6 +3,7 @@ package com.simon.videoplayer;
 import android.Manifest;
 import android.app.Dialog;
 import android.app.SearchManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -25,6 +26,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.SearchView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -57,6 +59,20 @@ public class VideoActivity extends AppCompatActivity {
         imageAdapter = new viewAdapter(this, fileModels);
         gridView.setAdapter(imageAdapter);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_MEDIA_VIDEO}, 0);
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
+            }
+        }
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_MEDIA_VIDEO}, 0);
@@ -135,51 +151,21 @@ public class VideoActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case 0:
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
-                        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 1);
-                        }
-                        gridView = findViewById(R.id.gridView);
-                        gridView.setNumColumns(3);
-                        fileModels = loadVideoList();
-                        imageAdapter = new viewAdapter(this, fileModels);
-                        gridView.setAdapter(imageAdapter);
+        if (requestCode == 0) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_DENIED)
+                Toast.makeText(this, "影片檔案無存取權限\n請在設定中開啟權限", Toast.LENGTH_LONG).show();
+            else {
+                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 1);
                     }
-                } else {
-                    android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-                    builder.setMessage("開啟存取權限")
-                            .setCancelable(false)
-                            .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_MEDIA_VIDEO}, 0);
-                                else
-                                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
-                            })
-                            .setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss());
-                    Dialog dialog = builder.create();
-                    dialog.show();
+                    gridView = findViewById(R.id.gridView);
+                    gridView.setNumColumns(3);
+                    fileModels = loadVideoList();
+                    imageAdapter = new viewAdapter(this, fileModels);
+                    gridView.setAdapter(imageAdapter);
                 }
-                break;
-            case 1:
-                if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                    android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-                    builder.setMessage("開啟藍芽權限")
-                            .setCancelable(false)
-                            .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    ActivityCompat.requestPermissions(this,
-                                            new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 1);
-                                }
-                            })
-                            .setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss());
-                    Dialog dialog = builder.create();
-                    dialog.show();
-                }
-                break;
-            default:
+            }
         }
     }
 
