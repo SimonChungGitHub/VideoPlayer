@@ -56,8 +56,15 @@ public class VideoActivity extends AppCompatActivity {
         fileModels = loadVideoList();
         imageAdapter = new viewAdapter(this, fileModels);
         gridView.setAdapter(imageAdapter);
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_MEDIA_VIDEO}, 0);
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
+            }
         }
     }
 
@@ -145,8 +152,12 @@ public class VideoActivity extends AppCompatActivity {
                     android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
                     builder.setMessage("開啟存取權限")
                             .setCancelable(false)
-                            .setPositiveButton(android.R.string.ok, (dialog, which) -> ActivityCompat.requestPermissions(this,
-                                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0))
+                            .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_MEDIA_VIDEO}, 0);
+                                else
+                                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
+                            })
                             .setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss());
                     Dialog dialog = builder.create();
                     dialog.show();
